@@ -33,6 +33,8 @@ netinet/in.h
 -
 netdb.h
 -
+unistd.h
+-
 
 /usr/local/include/opencv/cxcore.h
 opencv2/core/core_c.h

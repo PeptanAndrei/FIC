@@ -14,7 +14,7 @@
 #include <sys/socket.h>
 #include <netinet/in.h>
 #include <netdb.h> 
-
+#include <unistd.h>
 using namespace std;
 using namespace cv;
 //initial min and max HSV filter values.
@@ -51,8 +51,9 @@ void error(const char *msg)
     exit(0);
 }
 
-void connectToSock(char srv[], int portno)
+void connectToSock(char srv[], int portno,char comenji[])
 {
+    
     int sockfd, n;
     struct sockaddr_in serv_addr;
     struct hostent *server;
@@ -76,7 +77,23 @@ void connectToSock(char srv[], int portno)
         error("ERROR connecting");
     printf("Please enter the message: ");
     bzero(buffer,256);
-	  strcpy(buffer,"f");
+	  strcpy(buffer,"s");
+    char comenjivalide[]="lrfbs";
+    int i;
+    for(i=0;i<=strlen(comenji);i++)
+    {
+      if((strchr(comenjivalide,comenji[i]))==NULL)
+        {
+        error("Comanda gresita");
+        }
+      else {
+              bzero(buffer,256);
+           // strcpy(buffer,comenji[i]);
+             buffer[0]=comenji[i];
+             n = send(sockfd,buffer,strlen(buffer),0);
+            }
+      sleep(2);
+    }
     n = send(sockfd,buffer,strlen(buffer),0);
     if (n < 0) 
          error("ERROR writing to socket");
@@ -230,72 +247,72 @@ void trackFilteredObject(int &x, int &y, Mat threshold, Mat &cameraFeed) {
 int main(int argc, char* argv[])
 {
 
-	//some boolean variables for different functionality within this
-	//program
-	bool trackObjects = true;
-	bool useMorphOps = true;
-
-	Point p;
-	//Matrix to store each frame of the webcam feed
-	Mat cameraFeed;
-	//matrix storage for HSV image
-	Mat HSV;
-	//matrix storage for binary threshold image
-	Mat threshold;
-  Mat threshold_galben;
-	//x and y values for the location of the object
-	int x = 0, y = 0;
-	//create slider bars for HSV filtering
-	createTrackbars();
-	//video capture object to acquire webcam feed
-	VideoCapture capture;
-	//open capture object at location zero (default location for webcam)
-	capture.open("rtmp://172.16.254.99/live/nimic");
-	//set height and width of capture frame
-	capture.set(CV_CAP_PROP_FRAME_WIDTH, FRAME_WIDTH);
-	capture.set(CV_CAP_PROP_FRAME_HEIGHT, FRAME_HEIGHT);
-	//start an infinite loop where webcam feed is copied to cameraFeed matrix
-	//all of our operations will be performed within this loop
-
-
-
-	
-	while (1) {
-
-
-		//store image to matrix
-		capture.read(cameraFeed);
-		//convert frame from BGR to HSV colorspace
-		cvtColor(cameraFeed, HSV, COLOR_BGR2HSV);
-		//filter HSV image between values and store filtered image to
-		//threshold matrix
-		inRange(HSV, Scalar(H_MIN_roz, S_MIN, V_MIN), Scalar(H_MAX, S_MAX, V_MAX), threshold);
-    inRange(HSV, Scalar(H_MIN, S_MIN_galben, V_MIN_galben), Scalar(H_MAX, S_MAX, V_MAX), threshold_galben);
-		//perform morphological operations on thresholded image to eliminate noise
-		//and emphasize the filtered object(s)
-		if (useMorphOps){
-			morphOps(threshold);
-      morphOps(threshold_galben);
-      }
-		//pass in thresholded frame to our object tracking function
-		//this function will return the x and y coordinates of the
-		//filtered object
-		if (trackObjects){
-			trackFilteredObject(x, y, threshold, cameraFeed);
-      trackFilteredObject(x, y, threshold_galben, cameraFeed);
-      }
-
-		//show frames
-		imshow(windowName2, threshold);
-		imshow(windowName, cameraFeed);
-		//imshow(windowName1, HSV);
-		setMouseCallback("Original Image", on_mouse, &p);
-		//delay 30ms so that screen can refresh.
-		//image will not appear without this waitKey() command
-		waitKey(30);
-    connectToSock("193.226.12.217", 20236);
-	}
-
+//	//some boolean variables for different functionality within this
+//	//program
+//	bool trackObjects = true;
+//	bool useMorphOps = true;
+//
+//	Point p;
+//	//Matrix to store each frame of the webcam feed
+//	Mat cameraFeed;
+//	//matrix storage for HSV image
+//	Mat HSV;
+//	//matrix storage for binary threshold image
+//	Mat threshold;
+//  Mat threshold_galben;
+//	//x and y values for the location of the object
+//	int x = 0, y = 0;
+//	//create slider bars for HSV filtering
+//	createTrackbars();
+//	//video capture object to acquire webcam feed
+//	VideoCapture capture;
+//	//open capture object at location zero (default location for webcam)
+//	capture.open("rtmp://172.16.254.99/live/nimic");
+//	//set height and width of capture frame
+//	capture.set(CV_CAP_PROP_FRAME_WIDTH, FRAME_WIDTH);
+//	capture.set(CV_CAP_PROP_FRAME_HEIGHT, FRAME_HEIGHT);
+//	//start an infinite loop where webcam feed is copied to cameraFeed matrix
+//	//all of our operations will be performed within this loop
+//
+//
+//
+//	
+//	while (1) {
+//
+//
+//		//store image to matrix
+//		capture.read(cameraFeed);
+//		//convert frame from BGR to HSV colorspace
+//		cvtColor(cameraFeed, HSV, COLOR_BGR2HSV);
+//		//filter HSV image between values and store filtered image to
+//		//threshold matrix
+//		inRange(HSV, Scalar(H_MIN_roz, S_MIN, V_MIN), Scalar(H_MAX, S_MAX, V_MAX), threshold);
+//    inRange(HSV, Scalar(H_MIN, S_MIN_galben, V_MIN_galben), Scalar(H_MAX, S_MAX, V_MAX), threshold_galben);
+//		//perform morphological operations on thresholded image to eliminate noise
+//		//and emphasize the filtered object(s)
+//		if (useMorphOps){
+//			morphOps(threshold);
+//      morphOps(threshold_galben);
+//      }
+//		//pass in thresholded frame to our object tracking function
+//		//this function will return the x and y coordinates of the
+//		//filtered object
+//		if (trackObjects){
+//			trackFilteredObject(x, y, threshold, cameraFeed);
+//      trackFilteredObject(x, y, threshold_galben, cameraFeed);
+//      }
+//
+//		//show frames
+//		imshow(windowName2, threshold);
+//		imshow(windowName, cameraFeed);
+//		//imshow(windowName1, HSV);
+//		setMouseCallback("Original Image", on_mouse, &p);
+//		//delay 30ms so that screen can refresh.
+//		//image will not appear without this waitKey() command
+//		waitKey(30);
+//    connectToSock("193.226.12.217", 20236);
+//	}
+  connectToSock("193.226.12.217", 20232,"frfrlbs");
 	return 0;
 }
 
