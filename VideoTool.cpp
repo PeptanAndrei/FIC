@@ -6,16 +6,30 @@
 //#include <opencv2\cv.h>
 #include "opencv2/opencv.hpp"
 
+#include <stdio.h>
+#include <stdlib.h>
+#include <unistd.h>
+#include <string.h>
+#include <sys/types.h>
+#include <sys/socket.h>
+#include <netinet/in.h>
+#include <netdb.h> 
+
 using namespace std;
 using namespace cv;
 //initial min and max HSV filter values.
 //these will be changed using trackbars
-int H_MIN = 0;
+int H_MIN = 0; //171 -r
 int H_MAX = 256;
-int S_MIN = 0;
+int S_MIN = 0; // 172 -g
 int S_MAX = 256;
-int V_MIN = 0;
+int V_MIN = 0; //16 -g
 int V_MAX = 256;
+
+int H_MIN_roz = 171;
+int S_MIN_galben = 172;
+int V_MIN_galben = 16;
+
 //default capture width and height
 const int FRAME_WIDTH = 640;
 const int FRAME_HEIGHT = 480;
@@ -31,6 +45,44 @@ const std::string windowName2 = "Thresholded Image";
 const std::string windowName3 = "After Morphological Operations";
 const std::string trackbarWindowName = "Trackbars";
 
+void error(const char *msg)
+{
+    perror(msg);
+    exit(0);
+}
+
+void connectToSock(char srv[], int portno)
+{
+    int sockfd, n;
+    struct sockaddr_in serv_addr;
+    struct hostent *server;
+
+    char buffer[256];
+    sockfd = socket(AF_INET, SOCK_STREAM, 0);
+    if (sockfd < 0) 
+        error("ERROR opening socket");
+    server = gethostbyname(srv);
+    if (server == NULL) {
+        fprintf(stderr,"ERROR, no such host\n");
+        exit(0);
+    }
+    bzero((char *) &serv_addr, sizeof(serv_addr));
+    serv_addr.sin_family = AF_INET;
+    bcopy((char *)server->h_addr, 
+         (char *)&serv_addr.sin_addr.s_addr,
+         server->h_length);
+    serv_addr.sin_port = htons(portno);
+    if (connect(sockfd,(struct sockaddr *) &serv_addr,sizeof(serv_addr)) < 0) 
+        error("ERROR connecting");
+    printf("Please enter the message: ");
+    bzero(buffer,256);
+	  strcpy(buffer,"f");
+    n = send(sockfd,buffer,strlen(buffer),0);
+    if (n < 0) 
+         error("ERROR writing to socket");
+    bzero(buffer,256);
+    close(sockfd);
+}
 
 void on_mouse(int e, int x, int y, int d, void *ptr)
 {
@@ -190,6 +242,7 @@ int main(int argc, char* argv[])
 	Mat HSV;
 	//matrix storage for binary threshold image
 	Mat threshold;
+  Mat threshold_galben;
 	//x and y values for the location of the object
 	int x = 0, y = 0;
 	//create slider bars for HSV filtering
@@ -197,7 +250,7 @@ int main(int argc, char* argv[])
 	//video capture object to acquire webcam feed
 	VideoCapture capture;
 	//open capture object at location zero (default location for webcam)
-	capture.open(0);
+	capture.open("rtmp://172.16.254.99/live/nimic");
 	//set height and width of capture frame
 	capture.set(CV_CAP_PROP_FRAME_WIDTH, FRAME_WIDTH);
 	capture.set(CV_CAP_PROP_FRAME_HEIGHT, FRAME_HEIGHT);
@@ -216,25 +269,31 @@ int main(int argc, char* argv[])
 		cvtColor(cameraFeed, HSV, COLOR_BGR2HSV);
 		//filter HSV image between values and store filtered image to
 		//threshold matrix
-		inRange(HSV, Scalar(H_MIN, S_MIN, V_MIN), Scalar(H_MAX, S_MAX, V_MAX), threshold);
+		inRange(HSV, Scalar(H_MIN_roz, S_MIN, V_MIN), Scalar(H_MAX, S_MAX, V_MAX), threshold);
+    inRange(HSV, Scalar(H_MIN, S_MIN_galben, V_MIN_galben), Scalar(H_MAX, S_MAX, V_MAX), threshold_galben);
 		//perform morphological operations on thresholded image to eliminate noise
 		//and emphasize the filtered object(s)
-		if (useMorphOps)
+		if (useMorphOps){
 			morphOps(threshold);
+      morphOps(threshold_galben);
+      }
 		//pass in thresholded frame to our object tracking function
 		//this function will return the x and y coordinates of the
 		//filtered object
-		if (trackObjects)
+		if (trackObjects){
 			trackFilteredObject(x, y, threshold, cameraFeed);
+      trackFilteredObject(x, y, threshold_galben, cameraFeed);
+      }
 
 		//show frames
 		imshow(windowName2, threshold);
 		imshow(windowName, cameraFeed);
-		imshow(windowName1, HSV);
+		//imshow(windowName1, HSV);
 		setMouseCallback("Original Image", on_mouse, &p);
 		//delay 30ms so that screen can refresh.
 		//image will not appear without this waitKey() command
 		waitKey(30);
+    connectToSock("193.226.12.217", 20236);
 	}
 
 	return 0;
